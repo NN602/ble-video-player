@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BLE Video Player</title>
+<style>
+body { font-family: sans-serif; text-align: center; background: #111; color: #fff; padding: 20px; }
+button, input { font-size: 16px; padding: 10px; margin: 10px; }
+video { width: 100%; max-width: 800px; margin-top: 20px; background: #000; }
+</style>
+</head>
+<body>
+
+<h2>マイコン連動プレイヤー</h2>
+
+<!-- 1. スマホ内の動画を選択 -->
+<div>
+<label>① 動画を選択: </label>
+<input type="file" id="videoInput" accept="video/*">
+</div>
+
+<!-- 2. マイコンとBluetooth接続 -->
+<div>
+<button id="connectBtn">② マイコンと接続する</button>
+<p id="status">状態: 未接続</p>
+</div>
+
+<!-- 動画表示エリア -->
+<video id="player" controls playsinline></video>
+
+<script>
+const SERVICE_UUID = "4fafc201-1fb5-459e-8fcc-c5c9c331914b";
+const CHARACTERISTIC_UUID = "beb5483e-36e1-4688-b7f5-ea07361b26a8";
+
+const videoInput = document.getElementById('videoInput');
+const connectBtn = document.getElementById('connectBtn');
+const statusText = document.getElementById('status');
+const player = document.getElementById('player');
+
+// スマホ内の動画を読み込む処理
+videoInput.addEventListener('change', (e) => {
+const file = e.target.files[0];
+if (file) {
+player.src = URL.createObjectURL(file);
+}
+});
+
+// Bluetooth接続と受信処理
+connectBtn.addEventListener('click', async () => {
+try {
+statusText.textContent = "デバイス検索中...";
+const device = await navigator.bluetooth.requestDevice({
+filters: [{ name: 'XIAO_Video_Trigger' }],
+optionalServices: [SERVICE_UUID]
+});
+
+const server = await device.gatt.connect();
+const service = await server.getPrimaryService(SERVICE_UUID);
+const characteristic = await service.getCharacteristic(CHARACTERISTIC_UUID);
+
+await characteristic.startNotifications();
+statusText.textContent = "状態: 接続完了！マイコンの信号待ち";
+
+// マイコンから通知が来たときの処理
+characteristic.addEventListener('characteristicvaluechanged', (event) => {
+const value = new TextDecoder().decode(event.target.value);
+if (value === "PLAY") {
+player.play(); // 動画を再生
+if (player.requestFullscreen) {
+player.requestFullscreen(); // 全画面表示を試みる
+}
+}
+});
+} catch (error) {
+statusText.textContent = "エラー: " + error;
+}
+});
+</script>
+</body>
+</html>
