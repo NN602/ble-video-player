@@ -71,6 +71,13 @@ if (player.requestFullscreen) {
 player.requestFullscreen(); // 全画面表示を試みる
 }
 }
+if (value === "STOP") {
+    player.pause();
+    player.currentTime = 0;
+if (document.fullscreenElement) {
+        document.exitFullscreen();
+    }
+}
 });
 } catch (error) {
 statusText.textContent = "エラー: " + error;
